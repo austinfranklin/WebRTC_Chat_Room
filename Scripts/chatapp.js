@@ -8,6 +8,9 @@ var conn_answer;
 var flag_send_datachannel;
 var tm;
 var id_wordflick;
+
+const audioTag = document.querySelector('audioTag');
+let localStream;
 /*********************************************************************
  * Client - Sever Ping-Pong 
 **********************************************************************/
@@ -209,7 +212,7 @@ function create_webrtc_intial_connection() {
             }
         ]
     };
-    //navigator.mediaDevices.getUserMedia({audio: true, video: true});
+
     peerConnection = new RTCPeerConnection(configuration);
     console.log(peerConnection);
     //when the browser finds an ice candidate we send it to another peer 
@@ -291,6 +294,16 @@ function Create_DataChannel(name) {
     Send_dataChannel.onmessage = onSend_ChannelMessageCallback;
     Send_dataChannel.onopen = onSend_ChannelOpenState;
     Send_dataChannel.onclose = onSend_ChannelCloseStateChange;
+
+    name.ontrack = getStream;
+
+    navigator.mediaDevices.getUserMedia({audio: true, video: false})
+        .then(getStream => {
+            console.log('Got MediaStream:');
+        })
+        .catch(error => {
+            console.error('Error accessing media devices', error);
+        });
 }
 /**
  * This function will create the webRTC offer request for other user.
@@ -467,7 +480,7 @@ function create_request_room_Modal(name) {
 
     $("#incoming_call_Modal").modal('show');
     incoming_popup_set = true;
-}
+}s
 
 function wordflick (words) {
 
@@ -978,6 +991,7 @@ function LoadOnlineUserList(username_array) {
             }
     }
 }
+
 function Update_user_status(id_name, value)
 {
     switch(value)
@@ -994,6 +1008,38 @@ function Update_user_status(id_name, value)
             break;
     }
 }
-/*******************************************************************
- * End of file
- ********************************************************************/
+
+// gets audio stream
+function getStream(stream) {
+    console.log('Received local stream');
+    localStream = stream;
+    const audioTracks = localStream.getAudioTracks();
+    if (audioTracks.length > 0) {
+      console.log(`Using Audio device: ${audioTracks[0].label}`);
+    }
+    localStream.getTracks().forEach(track => {peerConnection.addTrack(track, localStream)});
+    console.log('Adding Local Stream to peer connection'); 
+}
+
+function getStream(e) {
+    if (supportsSetCodecPreferences) {
+      const preferredCodec = codecPreferences.options[codecPreferences.selectedIndex];
+      if (preferredCodec.value !== '') {
+        const [mimeType, clockRate, sdpFmtpLine] = preferredCodec.value.split(' ');
+        const {codecs} = RTCRtpReceiver.getCapabilities('audio');
+        console.log(mimeType, clockRate, sdpFmtpLine);
+        console.log(JSON.stringify(codecs, null, ' '));
+        const selectedCodecIndex = codecs.findIndex(c => c.mimeType === mimeType && c.clockRate === parseInt(clockRate, 10) && c.sdpFmtpLine === sdpFmtpLine);
+        const selectedCodec = codecs[selectedCodecIndex];
+        codecs.splice(selectedCodecIndex, 1);
+        codecs.unshift(selectedCodec);
+        e.transceiver.setCodecPreferences(codecs);
+        console.log('Preferred video codec', selectedCodec);
+      }
+    }
+  
+    if (audioTag.srcObject !== e.streams[0]) {
+      audioTag.srcObject = e.streams[0];
+      console.log('Received remote stream');
+    }
+  }
