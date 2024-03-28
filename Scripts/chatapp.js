@@ -295,8 +295,8 @@ function Create_DataChannel(name) {
     Send_dataChannel.onopen = onSend_ChannelOpenState;
     Send_dataChannel.onclose = onSend_ChannelCloseStateChange;
 
-    name.ontrack = getStream;
-
+    connectedUser.ontrack = getStream;
+    
     navigator.mediaDevices.getUserMedia({audio: true, video: false})
         .then(getStream => {
             console.log('Got MediaStream:');
